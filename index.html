@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="hi" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Product Catalog</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', }
+    </script>
+    <!-- Google Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-track { background: #333; }
+        .dark ::-webkit-scrollbar-thumb { background: #555; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Hide scrollbar for slider */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animations */
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Image Transitions */
+        .fade-img { transition: opacity 0.3s ease-in-out; }
+
+        /* Rich Text Editor Styles */
+        [contenteditable]:empty:before {
+            content: attr(placeholder);
+            color: #9ca3af;
+            display: block; 
+        }
+        #upload-desc-editor ul { list-style-type: disc; padding-left: 20px; }
+        #upload-desc-editor ol { list-style-type: decimal; padding-left: 20px; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Header Section -->
+    <header class="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-40 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <!-- Top Row: Logo & Theme -->
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="material-icons-round text-blue-600 text-3xl">inventory_2</span>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-wide leading-none">My Catalog</h1>
+                        <p class="text-[10px] text-gray-500 dark:text-gray-400">Private Digital Showcase</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- Dark Mode Toggle -->
+                    <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-yellow-400 transition" title="Toggle Theme">
+                        <span class="material-icons-round" id="theme-icon">dark_mode</span>
+                    </button>
+
+                    <!-- Upload Button -->
+                    <button onclick="openUploadModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 sm:px-4 rounded-lg flex items-center gap-2 transition shadow-lg active:scale-95 text-sm sm:text-base">
+                        <span class="material-icons-round">add</span>
+                        <span class="hidden sm:inline">Add Product</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Controls -->
+            <div class="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <!-- Search Bar -->
+                <div class="relative w-full sm:w-1/2 md:w-1/3">
+                    <span class="material-icons-round absolute left-3 top-2.5 text-gray-400 text-lg">search</span>
+                    <input type="text" id="search-input" oninput="handleSearch(this.value)" 
+                           class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition" 
+                           placeholder="Search products...">
+                </div>
+
+                <!-- View Toggles -->
+                <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg flex self-end sm:self-auto">
+                    <button onclick="switchView('grid')" id="btn-grid" class="p-2 rounded-md bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-300 transition-all">
+                        <span class="material-icons-round">grid_view</span>
+                    </button>
+                    <button onclick="switchView('slider')" id="btn-slider" class="p-2 rounded-md text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+                        <span class="material-icons-round">view_carousel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow p-4 max-w-7xl mx-auto w-full">
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
+            <span class="material-icons-round text-6xl mb-2">inventory</span>
+            <p class="text-lg">Koi products nahi hain.</p>
+            <p class="text-sm">Catalog banane ke liye 'Add Product' par click karein.</p>
+        </div>
+
+        <!-- Grid View Container -->
+        <div id="grid-view" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+
+        <!-- Slider View Container (FIXED: snap-mandatory + proper sizing) -->
+        <!-- snap-mandatory ensures it STOPS exactly at center -->
+        <div id="slider-view" class="hidden w-full overflow-x-auto flex snap-x snap-mandatory snap-center items-center justify-center h-[70vh] md:h-[75vh] gap-8 px-4 no-scrollbar"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-gray-800 border-t dark:border-gray-700 py-4 text-center text-gray-500 dark:text-gray-400 text-sm transition-colors duration-300">
+        <p>Catalog App &copy; 2023 | Private Device Storage</p>
+    </footer>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- 1. UPLOAD MODAL -->
+    <div id="upload-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] animate-fade-in-up">
+            <!-- Header -->
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                <h2 class="text-xl font-bold dark:text-white flex items-center gap-2">
+                    <span class="material-icons-round text-blue-600">add_business</span> Naya Product
+                </h2>
+                <button onclick="closeModal('upload-modal')" class="text-gray-500 hover:text-red-500"><span class="material-icons-round">close</span></button>
+            </div>
+
+            <!-- Body (Scrollable) -->
+            <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+                <!-- Product Name/Title -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Name & Price</label>
+                    <input type="text" id="upload-title" class="w-full p-2 rounded-lg border dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Jaise: Gold Ring - ₹15,000">
+                </div>
+                
+                <!-- Rich Text Description -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Details & Specs</label>
+                    <div class="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+                        <div class="bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 p-1.5 flex gap-1 sticky top-0 z-10">
+                            <button type="button" onclick="formatDoc('bold')" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold text-sm">B</button>
+                            <button type="button" onclick="formatDoc('italic')" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 italic text-sm">I</button>
+                            <button type="button" onclick="formatDoc('underline')" class="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 underline text-sm">U</button>
+                        </div>
+                        <div id="upload-desc-editor" contenteditable="true" class="w-full min-h-[100px] p-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 outline-none overflow-y-auto prose prose-sm max-w-none" placeholder="Yahan features aur details likhein..."></div>
+                    </div>
+                </div>
+
+                <!-- File Input -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product Images (Max 5)</label>
+                    <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer relative">
+                        <input type="file" id="upload-files" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
+                        <span class="material-icons-round text-4xl text-gray-400">add_photo_alternate</span>
+                        <p class="text-sm text-gray-500 mt-2">Product ki photos select karein</p>
+                        <p id="file-count" class="text-xs text-blue-500 font-bold mt-1 h-4"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer (Fixed) -->
+            <div class="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+                <button onclick="processUpload()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold shadow-md transition">Save Product</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. VIEW MODAL (FULL SCREEN) -->
+    <div id="view-modal" class="fixed inset-0 z-[60] bg-black flex flex-col h-screen w-screen overflow-hidden">
+        <!-- Top Bar -->
+        <div class="flex justify-between items-center p-3 text-white z-10 flex-shrink-0 bg-black/50 backdrop-blur-sm">
+            <button onclick="closeModal('view-modal')" class="p-2 bg-white/10 hover:bg-white/20 rounded-full transition"><span class="material-icons-round">close</span></button>
+            <div class="flex gap-2">
+                <button onclick="downloadCurrentImage()" class="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-2 rounded-full backdrop-blur-sm transition text-xs font-medium" title="Download"><span class="material-icons-round text-sm">download</span></button>
+                <button onclick="openInfoFromView()" class="flex items-center gap-1 bg-white/20 hover:bg-white/30 px-3 py-2 rounded-full backdrop-blur-sm transition text-xs font-medium"><span class="material-icons-round text-sm">info</span> Details</button>
+                <button onclick="deleteCurrentAlbum()" class="flex items-center gap-1 bg-red-500/80 hover:bg-red-600 px-3 py-2 rounded-full backdrop-blur-sm transition text-xs font-medium"><span class="material-icons-round text-sm">delete</span> Delete</button>
+            </div>
+        </div>
+
+        <!-- Image Area -->
+        <div class="flex-grow relative flex items-center justify-center bg-black overflow-hidden w-full">
+            <button onclick="changeSubImage(-1)" class="absolute left-2 md:left-6 z-20 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition"><span class="material-icons-round text-3xl md:text-4xl">chevron_left</span></button>
+            <img id="modal-image" src="" alt="View" class="max-w-full max-h-full object-contain select-none fade-img w-full h-full">
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs backdrop-blur-sm z-20"><span id="sub-image-counter">1 / 5</span></div>
+            <button onclick="changeSubImage(1)" class="absolute right-2 md:right-6 z-20 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition"><span class="material-icons-round text-3xl md:text-4xl">chevron_right</span></button>
+        </div>
+    </div>
+
+    <!-- 3. INFO MODAL (RESPONSIVE) -->
+    <div id="info-modal" class="fixed inset-0 bg-black/80 z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+            <div class="p-4 sm:p-5 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                <div class="flex flex-col">
+                    <span class="text-[10px] sm:text-xs uppercase font-bold text-gray-400 tracking-wider mb-0.5">Product Details</span>
+                    <h2 id="info-title-display" class="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-tight">Title</h2>
+                </div>
+                <button onclick="closeModal('info-modal')" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-300 transition"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 bg-white dark:bg-gray-800">
+                <div class="flex items-center gap-2 mb-6 text-xs sm:text-sm text-gray-500 dark:text-gray-400"><span class="material-icons-round text-sm sm:text-base">inventory</span><span id="info-date-display">Added on: Date</span></div>
+                <div class="prose prose-sm dark:prose-invert max-w-none"><div id="info-desc-display" class="leading-relaxed text-gray-700 dark:text-gray-200 min-h-[100px]"></div></div>
+            </div>
+            <div class="p-3 sm:p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                <button onclick="speakDescription()" id="voice-btn" class="w-full flex items-center justify-center gap-2 bg-white dark:bg-gray-600 hover:bg-gray-50 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-500 px-4 sm:px-6 py-3 rounded-xl font-medium transition group shadow-sm text-sm sm:text-base">
+                    <span class="material-icons-round text-purple-500 group-hover:text-purple-600 transition-transform group-hover:scale-110">volume_up</span>
+                    <span>Read Details Aloud</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-[70] flex items-center gap-2">
+        <span class="material-icons-round text-green-400" id="toast-icon">check_circle</span>
+        <span id="toast-message">Action Successful</span>
+    </div>
+
+    <!-- Script -->
+    <script>
+        // --- 1. Database Setup (IndexedDB - Local Only) ---
+        let db;
+        const DB_NAME = 'CatalogDB';
+        const STORE_NAME = 'products';
+        let currentView = 'grid'; 
+        let albumsData = []; 
+        let currentAlbumId = null; 
+        let currentSubImageIndex = 0;
+
+        window.onload = () => {
+            initDB();
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) toggleTheme(true);
+        };
+
+        function initDB() {
+            const request = indexedDB.open(DB_NAME, 2);
+            request.onupgradeneeded = (e) => {
+                db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                }
+            };
+            request.onsuccess = (e) => {
+                db = e.target.result;
+                loadAlbums();
+            };
+            request.onerror = (e) => showToast('Database error!', 'error');
+        }
+
+        function loadAlbums() {
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+            request.onsuccess = () => {
+                albumsData = request.result.reverse();
+                renderGallery();
+            };
+        }
+
+        // --- 2. Search Logic ---
+        function handleSearch(query) {
+            if (!query.trim()) {
+                renderGallery(albumsData);
+                return;
+            }
+            const lowerQuery = query.toLowerCase();
+            const filtered = albumsData.filter(album => 
+                album.title.toLowerCase().includes(lowerQuery)
+            );
+            renderGallery(filtered);
+        }
+
+        // --- 3. Rich Text Editor Helper ---
+        function formatDoc(cmd, value = null) {
+            document.execCommand(cmd, false, value);
+            document.getElementById('upload-desc-editor').focus();
+        }
+
+        // --- 4. Upload Logic ---
+        let selectedFiles = [];
+
+        function openUploadModal() {
+            document.getElementById('upload-modal').classList.remove('hidden');
+            document.getElementById('upload-title').value = '';
+            document.getElementById('upload-desc-editor').innerHTML = ''; 
+            document.getElementById('upload-files').value = '';
+            document.getElementById('file-count').innerText = '';
+            selectedFiles = [];
+        }
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            if (files.length > 5) {
+                showToast('Sirf 5 images!', 'error');
+                event.target.value = '';
+                selectedFiles = [];
+                document.getElementById('file-count').innerText = '';
+                return;
+            }
+            selectedFiles = files;
+            document.getElementById('file-count').innerText = `${files.length} Selected`;
+        }
+
+        function processUpload() {
+            const title = document.getElementById('upload-title').value.trim();
+            const desc = document.getElementById('upload-desc-editor').innerHTML; 
+
+            if (!title) return showToast('Title zaroori hai!', 'error');
+            if (selectedFiles.length === 0) return showToast('Ek image select karein!', 'error');
+
+            const imagePromises = selectedFiles.map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({ data: e.target.result });
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            Promise.all(imagePromises).then(images => {
+                images[0].isParent = true; 
+                const albumData = { title: title, description: desc, date: new Date().toLocaleDateString(), images: images };
+                addAlbumToDB(albumData);
+            });
+        }
+
+        function addAlbumToDB(albumData) {
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            store.add(albumData).onsuccess = () => {
+                showToast('Product save ho gaya!');
+                closeModal('upload-modal');
+                loadAlbums();
+            };
+        }
+
+        // --- 5. Download Logic ---
+        function downloadCurrentImage() {
+            const album = albumsData.find(a => a.id === currentAlbumId);
+            if (!album) return;
+            const imgObj = album.images[currentSubImageIndex];
+            const link = document.createElement('a');
+            link.href = imgObj.data;
+            link.download = `product-photo-${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Image download ho gayi!');
+        }
+
+        // --- 6. Theme & UI Logic ---
+        function toggleTheme(forceDark = null) {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (forceDark === true || (forceDark === null && !html.classList.contains('dark'))) {
+                html.classList.add('dark'); icon.innerText = 'light_mode';
+            } else {
+                html.classList.remove('dark'); icon.innerText = 'dark_mode';
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const gridBtn = document.getElementById('btn-grid');
+            const sliderBtn = document.getElementById('btn-slider');
+            const gridView = document.getElementById('grid-view');
+            const sliderView = document.getElementById('slider-view');
+
+            if (view === 'grid') {
+                gridBtn.className = 'p-2 rounded-md bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-300 transition-all';
+                sliderBtn.className = 'p-2 rounded-md text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all';
+                gridView.classList.remove('hidden'); sliderView.classList.add('hidden');
+            } else {
+                sliderBtn.className = 'p-2 rounded-md bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-300 transition-all';
+                gridBtn.className = 'p-2 rounded-md text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all';
+                sliderView.classList.remove('hidden'); gridView.classList.add('hidden');
+            }
+            const currentSearch = document.getElementById('search-input').value;
+            handleSearch(currentSearch);
+        }
+
+        function closeModal(modalId) { 
+            document.getElementById(modalId).classList.add('hidden');
+            if(window.speechSynthesis) window.speechSynthesis.cancel();
+        }
+
+        // --- 7. Rendering Logic ---
+        function renderGallery(data = albumsData) {
+            const gridView = document.getElementById('grid-view');
+            const sliderView = document.getElementById('slider-view');
+            const emptyState = document.getElementById('empty-state');
+            gridView.innerHTML = ''; sliderView.innerHTML = '';
+
+            if (data.length === 0) { emptyState.classList.remove('hidden'); return; }
+            else { emptyState.classList.add('hidden'); }
+
+            data.forEach(album => {
+                // Get Parent Image (First one)
+                const parentImg = album.images[0];
+                
+                // GRID ITEM
+                const gridItem = document.createElement('div');
+                gridItem.className = 'group relative aspect-square overflow-hidden rounded-xl shadow-md cursor-pointer bg-gray-200 dark:bg-gray-800 transition hover:shadow-xl';
+                gridItem.onclick = () => openViewModal(album.id);
+                gridItem.innerHTML = `
+                    <img src="${parentImg.data}" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                        <h3 class="text-white font-bold text-lg truncate">${album.title}</h3>
+                        <p class="text-gray-300 text-xs truncate">${album.images.length} Photos</p>
+                    </div>`;
+                gridView.appendChild(gridItem);
+
+                // SLIDER ITEM (FIXED STRUCTURE & SIZE)
+                const sliderItem = document.createElement('div');
+                // snap-center is required here to align with the container snap-center
+                // w-[85vw] md:w-[65vw] makes the image large and prominent
+                sliderItem.className = 'flex-none w-[85vw] md:w-[65vw] h-full snap-center flex items-center justify-center relative';
+                
+                sliderItem.innerHTML = `
+                    <div class="relative w-full h-full flex items-center justify-center cursor-pointer group" onclick="openViewModal(${album.id})">
+                        <img src="${parentImg.data}" class="max-w-full max-h-full object-contain rounded-2xl shadow-2xl">
+                        
+                        <!-- Info Icon Only -->
+                        <div class="absolute bottom-6 right-6 bg-gray-900/80 hover:bg-blue-600 text-white p-3 rounded-full backdrop-blur-md transition shadow-lg z-10">
+                            <span class="material-icons-round text-xl">info</span>
+                        </div>
+                    </div>`;
+                sliderView.appendChild(sliderItem);
+            });
+        }
+
+        // --- 8. View Modal Logic ---
+        function openViewModal(albumId) {
+            currentAlbumId = albumId;
+            currentSubImageIndex = 0;
+            updateViewModal();
+            document.getElementById('view-modal').classList.remove('hidden');
+        }
+
+        function changeSubImage(direction) {
+            const album = albumsData.find(a => a.id === currentAlbumId);
+            if (!album) return;
+            currentSubImageIndex += direction;
+            if (currentSubImageIndex >= album.images.length) currentSubImageIndex = 0;
+            if (currentSubImageIndex < 0) currentSubImageIndex = album.images.length - 1;
+            updateViewModal();
+        }
+
+        function updateViewModal() {
+            const album = albumsData.find(a => a.id === currentAlbumId);
+            if (!album) return;
+            const imgObj = album.images[currentSubImageIndex];
+            const imgEl = document.getElementById('modal-image');
+            imgEl.style.opacity = '0';
+            setTimeout(() => {
+                imgEl.src = imgObj.data;
+                document.getElementById('sub-image-counter').innerText = `${currentSubImageIndex + 1} / ${album.images.length}`;
+                imgEl.style.opacity = '1';
+            }, 150);
+        }
+
+        function deleteCurrentAlbum() {
+            if(confirm('Kya aap ye product delete karna chahte hain?')) {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                transaction.objectStore(STORE_NAME).delete(currentAlbumId).onsuccess = () => {
+                    showToast('Product delete ho gaya.');
+                    closeModal('view-modal');
+                    loadAlbums();
+                };
+            }
+        }
+
+        // --- 9. Info Modal Logic ---
+        function openInfoFromView() {
+            const album = albumsData.find(a => a.id === currentAlbumId);
+            if(!album) return;
+            document.getElementById('info-title-display').innerText = album.title;
+            document.getElementById('info-date-display').innerText = `Added on: ${album.date}`;
+            const descDisplay = document.getElementById('info-desc-display');
+            descDisplay.innerHTML = album.description || "<p class='text-gray-400'>Koi details nahi di gayi.</p>";
+            closeModal('view-modal'); 
+            document.getElementById('info-modal').classList.remove('hidden');
+            descDisplay.parentElement.scrollTop = 0;
+        }
+
+        function speakDescription() {
+            const album = albumsData.find(a => a.id === currentAlbumId);
+            if(!album) return;
+            const title = album.title;
+            const descDiv = document.getElementById('info-desc-display');
+            const desc = descDiv.innerText;
+            const fullText = title + ". " + desc;
+            if (!fullText.trim()) return showToast('Padhne ke liye kuch nahi hai.', 'error');
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(fullText);
+                utterance.lang = 'hi-IN'; 
+                utterance.rate = 1;
+                const btn = document.getElementById('voice-btn');
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = '<span class="material-icons-round animate-pulse">graphic_eq</span><span>Reading...</span>';
+                utterance.onend = () => { btn.innerHTML = originalContent; };
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function showToast(msg, type='success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+            toastMsg.innerText = msg;
+            toastIcon.className = type === 'error' ? 'material-icons-round text-red-400' : 'material-icons-round text-green-400';
+            toastIcon.innerText = type === 'error' ? 'error' : 'check_circle';
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+    </script>
+</body>
+</html>
